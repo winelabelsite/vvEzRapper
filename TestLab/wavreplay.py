@@ -73,12 +73,27 @@ def convert_and_add_slash(text):
     katakana_text = jaconv.hira2kata(text)
     # 全角カタカナの後に '/ を追加
     result = re.sub(r'([ァ-ヺヽーヿ])', r"\1'/", katakana_text)
+    print(text)
     return result[:-1]
+
+def modify_mora_length(query, length):
+    for ac in query['accent_phrases']:
+        for mora in ac['moras']:
+            consonant_length = mora['consonant_length']
+            if consonant_length is None:
+                vowel_length = length
+            else:
+                vowel_length = length - consonant_length
+            mora['vowel_length'] = vowel_length
+            print(json.dumps(mora, ensure_ascii=False))
+
+    return query
 
 if __name__ == "__main__":
     # 読み上げたいテキスト
     text = "じゅげむうじゅげむうごこうのすりきれ"
-    text_aquestalkfu =  convert_and_add_slash(text)
+    # text_aquestalkfu =  convert_and_add_slash(text)
+    text_aquestalkfu =  text
     print(text_aquestalkfu)
 
     vvre = VVEzRapperEngine()
@@ -93,24 +108,23 @@ if __name__ == "__main__":
 
     contents_template = vvre.write_wave('output1.wav', query_template)
 
-    # アクセントフレーズをAquesTalk風フォーマットで作る。
-    accent_phrases = vvre.accent_phrases(text_aquestalkfu, is_kana=True)
-    if accent_phrases is None:
-        vvre.get_last_error_info()
-    else:
-        # print(json.dumps(accent_phrases, indent=2, ensure_ascii=False))
-        pass
+    # # アクセントフレーズをAquesTalk風フォーマットで作る。
+    # accent_phrases = vvre.accent_phrases(text_aquestalkfu, is_kana=True)
+    # if accent_phrases is None:
+    #     vvre.get_last_error_info()
+    # else:
+    #     print(json.dumps(accent_phrases, indent=2, ensure_ascii=False))
+    #     pass
 
     query_aquestalkfu = copy.deepcopy(query_template)
-
-    query_aquestalkfu['accent_phrases'] = accent_phrases
-    content_aquestalkfu = vvre.write_wave('output2.wav', query_aquestalkfu)
+    query_aquestalkfu = modify_mora_length(query_aquestalkfu, 0.2)
     # print(json.dumps(query_aquestalkfu, indent=2, ensure_ascii=False))
-    
+    content_aquestalkfu = vvre.write_wave('output2.wav', query_aquestalkfu)
+       
     content = content_aquestalkfu
     query_json = query_aquestalkfu
     duration_sec = calc_wavdata_duration_sec(content)
-    print(f'{duration_sec}')
+    print(f'content_aquestalkfu length = {duration_sec}')
 
     # モーラの数を数える。
     mora_count = 0
@@ -132,5 +146,8 @@ if __name__ == "__main__":
     query_json['postPhonemeLength'] = 0
 
     # ファイナル
+    # print(json.dumps(query_json, indent=2, ensure_ascii=False))
     content = vvre.synthesis(query_json, 1)
+    duration_sec = calc_wavdata_duration_sec(content)
+    print(f'content length = {duration_sec}')
     vvre.write_wave('output_after2.wav', query_json)
