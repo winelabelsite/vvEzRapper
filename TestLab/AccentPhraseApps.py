@@ -1,5 +1,4 @@
 import json
-import inspect
 from AccentPhraseHandler import AccentPhraseHandler as APH
 
 class APDumper(APH):
