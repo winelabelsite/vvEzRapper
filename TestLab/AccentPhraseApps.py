@@ -89,6 +89,13 @@ if __name__ == "__main__":
     ae = AccessEngine()
     wh = WaveHandler()
 
+    def calc_ration(bpm, wave_length, moras_count):
+        spb_given = 60 / bpm / 4
+        spb_before = wave_length / moras_count
+        ratio = spb_given / spb_before
+        print(f'spb_given = {spb_given:.6f}, spb_before = {spb_before:.6f}, ratio = {ratio:.6f}')
+        return ratio
+
     def test01(ae, wh, text):
         query = ae.audio_query(text)
         moras_count = APMorasCounter().run(query)
@@ -119,12 +126,8 @@ if __name__ == "__main__":
     print(f'length_before = {l01:.6f}')
     print(f'length_after = {l02:.6f}')
     APDumper().run(q02)
-
-    bpm = 120
-    spb_given = 60 / bpm / 4
-    spb_before = l02 / moras_count
-    ratio = spb_given / spb_before
-    print(f'spb_given = {spb_given:.6f}, spb_before = {spb_before:.6f}, ratio = {ratio:.6f}')
+    
+    ratio = calc_ration(120, l01, moras_count)
 
     q02['speedScale'] /= ratio
     q02['postPhonemeLength'] /= ratio
