@@ -26,8 +26,8 @@ class AccessEngine:
         return query_response.json()
 
     # クエリ編集
-    def accent_phrases(self, text, speaker=1):
-        query_payload = {'text': text, 'speaker': speaker}
+    def accent_phrases(self, text, speaker=1, is_kana=False):
+        query_payload = {'text': text, 'speaker': speaker, is_kana: is_kana}
         query_response = requests.post(f'{AccessEngine.SERVER_URL}/accent_phrases', params=query_payload)
         if query_response.ok is False:
             self.print_error(query_response)
@@ -148,7 +148,7 @@ if __name__ == "__main__":
     ae = AccessEngine()
 
     speakers = ae.speakers()
-    print(json.dumps(speakers, indent=2, ensure_ascii=False))
+    open('speakers.json', 'w', encoding='utf8').write(json.dumps(speakers, indent=2, ensure_ascii=False))
 
     speaker_uuid = speakers[0]['speaker_uuid']
     speaker_info = ae.speaker_info(speaker_uuid)

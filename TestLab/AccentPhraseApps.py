@@ -86,59 +86,79 @@ if __name__ == "__main__":
     import sys
     from accessEngine import AccessEngine
     from wavhandler import WaveHandler
-    ae = AccessEngine()
-    wh = WaveHandler()
 
-    def calc_ration(bpm, wave_length, moras_count):
+    def calc_ratio(bpm, wave_length, moras_count):
+        """bpmとwave_lengthから、1モーラあたりの秒数を計算し、それをbpmから求めた値と比較して、比率を求める"""
         spb_given = 60 / bpm / 4
         spb_before = wave_length / moras_count
         ratio = spb_given / spb_before
         print(f'spb_given = {spb_given:.6f}, spb_before = {spb_before:.6f}, ratio = {ratio:.6f}')
         return ratio
 
-    def test01(ae, wh, text):
+    def make_sample(text, is_kana=False, wavefilename=None):
+        """テキストから音声波形を生成し、その長さとクエリを返す"""
+        ae = AccessEngine()
+        wh = WaveHandler()
         query = ae.audio_query(text)
-        moras_count = APMorasCounter().run(query)
-        print(f'moras_count = {moras_count}')
-        query = ae.audio_query(text)
+        if is_kana is True:
+            accent_phrases = ae.accent_phrases(text, is_kana=is_kana)
+            query['accentPhrases'] = accent_phrases
+            query['kana'] = text
+        print(query['kana'])
         wave = ae.synthesis(query)
         length_before = wh.get_length(wave)
-        wh.write('test01.wav', wave)
-        return length_before, query, 
+        if wavefilename is not None:
+            wh.write(wavefilename, wave)
+        return length_before, query 
 
-    def test02(query):
+    def set_average_length(query, wavefilename=None):
+        """クエリの各モーラの長さを平均化し、そのクエリを返す"""
+        ae = AccessEngine()
+        wh = WaveHandler()
         average_length = APLengthAverageCalcurator().run(query)
         # query['prePhonemeLength'] = 0.0
         # query['postPhonemeLength'] = 0.0
         APMoraLengthAdjuster(average_length).run(query)
         APDumper().run(query)
         wave = ae.synthesis(query)
-        wh.write('test02.wav', wave)
         length = wh.get_length(wave)
+        if wavefilename is not None:
+            wh.write(wavefilename, wave)
         return length, query
     
-    text = 'おきておきておきておきておきてー'
-    l01, q01 = test01(ae, wh, text)
-    moras_count = APMorasCounter().run(q01)
-    APDumper().run(q01)
+    bpm = 120
 
-    l02, q02 = test02(q01)
+    text = 'じゅげむーじゅげむーごこーのすりきれじゅげむーじゅげむーごこーのすりきれ'
+    text = "ジュ'ゲムウ/ジュ'ゲムウ/ゴコ'オノ/スリ'キレ'"
+    l01, q01 = make_sample(text, is_kana=True, wavefilename='original.wav')
+    print(json.dumps(q01, indent=2, ensure_ascii=False))
+    APDumper().run(q01)
+    moras_count = APMorasCounter().run(q01)
+    print(f'moras_count = {moras_count}')
+
+    l02, q02 = set_average_length(q01)
     print(f'length_before = {l01:.6f}')
     print(f'length_after = {l02:.6f}')
     APDumper().run(q02)
     
-    ratio = calc_ration(120, l01, moras_count)
+    ratio = calc_ratio(bpm, l02, moras_count)
 
-    q02['speedScale'] /= ratio
-    q02['postPhonemeLength'] /= ratio
-    APDumper().run(q02)
-    wave = ae.synthesis(q02)
-    length = wh.get_length(wave)
-    print(f'length = {length:.6f}')
-    wh.write('rap.wav', wave)
+    def make_rap(query, ratio, wavefilename=None):
+        ae = AccessEngine()
+        wh = WaveHandler()
+        query['speedScale'] /= ratio
+        query['postPhonemeLength'] /= ratio
+        wave = ae.synthesis(query)
+        length = wh.get_length(wave)
+        if wavefilename is not None:
+            wh.write(wavefilename, wave)
+        return length, wave
 
-    length_rap = wh.get_length(wave)
+    length_rap, wave =  make_rap(q01, ratio, 'rap.wav')
+    APDumper().run(q01)
+    print(f'length = {length_rap:.6f}')
+
     spb_rap = length_rap / moras_count
-    length_expected = spb_given * moras_count
+    length_expected = spb_given = 60 / bpm / 4 * moras_count
     print(f'length_rap = {length_rap:.6f}, len= {moras_count}, expected = {length_expected:.6f}, diff(total) = {length_rap - length_expected:.6f}, diff(per mora) = {(length_rap - length_expected) / moras_count}' )
-    wh.play(wave)
+    WaveHandler().play(wave)
