@@ -15,41 +15,58 @@ class WaveHandler:
             wavedata = f.read()
             return wavedata
 
-    def play(self, wavedata):
+    def get_wavedata_info(self, wavedata):
         with wave.open(io.BytesIO(wavedata), "rb") as wf:
             # WAVファイルのパラメータを取得
             num_channels = wf.getnchannels()  # チャンネル数（モノラルorステレオ）
             sample_width = wf.getsampwidth()  # サンプル幅（バイト数）
             frame_rate = wf.getframerate()    # サンプリングレート
             num_frames = wf.getnframes()      # フレーム数
-
             # 音声データを読み込む
             audio_data = wf.readframes(num_frames)
+            params = wf.getparams()
+
+        return num_channels, sample_width, frame_rate, num_frames, audio_data            
+
+    def play(self, wavedata):
+        num_channels, sample_width, frame_rate, _, audio_data = self.get_wavedata_info(wavedata)           
 
         # 読み込んだデータを再生
         play_obj = sa.play_buffer(audio_data, num_channels, sample_width, frame_rate)
 
         # 再生終了を待つ
-        play_obj.wait_done()
-        # import time
-        # while play_obj.is_playing():
-        #     time.sleep(0.1)  # 少し待機しながらループ
-        # print('done')
+        # play_obj.wait_done()
 
+        # ループで終了を待機するバージョン
+        import time
+        while play_obj.is_playing():
+            time.sleep(0.1)
+    
     def get_length(self, wavedata):
-        with wave.open(io.BytesIO(wavedata), "rb") as wav_file:
-            frame_rate = wav_file.getframerate()
-            num_frames = wav_file.getnframes()
-            duration_sec = num_frames / frame_rate
+        _, _, frame_rate, num_frames, _ = self.get_wavedata_info(wavedata)           
+        duration_sec = num_frames / frame_rate
         return duration_sec
 
+    def show_wavedata_info(self, wavedata):
+        num_channels, sample_width, frame_rate, num_frames, _ = self.get_wavedata_info(wavedata)           
+        print(f"チャンネル数: {num_channels}")
+        print(f"サンプル幅: {sample_width} byte")
+        print(f"サンプリングレート: {frame_rate} Hz")
+        print(f"フレーム数: {num_frames} フレーム")
+        print(f"再生時間: {num_frames / frame_rate} 秒")
+
 if __name__ == "__main__":
+    INPUT_WAVE_FILE = 'testdata/whtest00.wav'
+    OUTPUT_WAVE_FILE = 'testdata/result.wav'
     wh = WaveHandler()
-    wavedata = wh.read('rap.wav')
+    wavedata = wh.read(INPUT_WAVE_FILE)
+    wh.show_wavedata_info(wavedata)
     print(wh.get_length(wavedata))
-    wh.play(wavedata)
-    print('done')
-    wh.write('test2.wav', wavedata)
-    wh.play(wavedata)
+
+    wh.write(OUTPUT_WAVE_FILE, wavedata)
+    wavedata = wh.read(OUTPUT_WAVE_FILE)
+    wh.show_wavedata_info(wavedata)
+    print(wh.get_length(wavedata))
+    
     print('done')
 
