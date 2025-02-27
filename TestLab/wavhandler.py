@@ -29,6 +29,7 @@ class WaveHandler:
         return num_channels, sample_width, frame_rate, num_frames, audio_data            
 
     def play(self, wavedata):
+    	# 再生終了するまで待つようにしたいが、その方法がわからないので後回し。
         num_channels, sample_width, frame_rate, _, audio_data = self.get_wavedata_info(wavedata)           
 
         # 読み込んだデータを再生
