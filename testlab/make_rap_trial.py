@@ -1,3 +1,4 @@
+import json
 import AccentPhraseApps as APA
 import wavhandler as WH
 import accessEngine as AE
@@ -15,7 +16,7 @@ def calc_ratio(bpm, wave_length, moras_count):
 def calc_expected_length(bpm, moras_count):
     """bpmとモーラ数から、期待される音声の長さを計算する"""
     expected_length = 60 * moras_count / bpm / 4
-    print(f'expected_length = {expected_length:.6f}')
+    # print(f'expected_length = {expected_length:.6f}')
     return expected_length
 
 def make_sample(text, is_kana=False, wavefilename=None):
@@ -38,9 +39,9 @@ def set_average_length(query, wavefilename=None):
         """クエリの各モーラの長さを平均化し、そのクエリを返す"""
         ae = AE.AccessEngine()
         wh = WH.WaveHandler()
+        # APA.APDumper().run(query)
         average_length = APA.APLengthAverageCalcurator().run(query)
-        APA.APMoraLengthAdjuster(average_length).run(query)
-        APA.APDumper().run(query)
+        query = APA.APMoraLengthAdjuster(average_length).run(query)
         wave = ae.synthesis(query)
         if wavefilename is not None:
             wh.write(wavefilename, wave)
@@ -57,26 +58,66 @@ def make_wavefile_from_query(query, wavefilename=None):
     # print(f'make_wavefile_from_query length = {length}')
     return length
 
+def query_operation(query, ratio):
+    query['prePhonemeLength'] = 0.0
+    query['postPhonemeLength'] = 0.0
+    query["speedScale"] = 1 / ratio
+    query['outputSamplingRate'] = 48000
+    # APA.APDumper().run(query)
+    return query
+
 
 def trial_algo01(text):
     # print('お試し01 サンプル作って全体の長さ調整')
 
-    # サンプル作って長さ測ってみる
-    length_before, query = make_sample(text, wavefilename='algo01_before.wav')
+    # サンプル作る
+    _, query = make_sample(text)
     moras_count = APA.APMorasCounter().run(query)
-    ratio = calc_ratio(BPM, length_before, moras_count)
+    print(f'algo01: text = {text}, moras_count = {moras_count}')
 
-    # Queryを操作する
-    query['prePhonemeLength'] = 0.0
-    query['postPhonemeLength'] = 0.0
-    query["speedScale"] = 1 / ratio
-    query['outputSamplingRate'] = 24000
+    # waveファイルを作成
+    query = query_operation(query, 1.0)
+    length_before = make_wavefile_from_query(query, wavefilename='algo01_before.wav')
+
+    # 長さ調整
+    ratio = calc_ratio(BPM, length_before, moras_count)
+    query = query_operation(query, ratio)
 
     # waveファイルを作成
     length_after = make_wavefile_from_query(query, wavefilename='algo01_after.wav')
     expected_length = calc_expected_length(BPM, moras_count)
     difference = length_after - expected_length
-    print(f'difference = {difference:.9f}')
+    print(f'difference = {difference:.9f}, per mora = {(difference / moras_count):.9f}')
+    return query
+
+def trial_algo02(text):
+    # print('お試し02 サンプルのMora長さを平均化してから長さ調整')
+
+    # サンプル作る
+    _, query = make_sample(text)
+    moras_count = APA.APMorasCounter().run(query)
+    print(f'algo02: text = {text}, moras_count = {moras_count}')
+    # Moraの長さを平均化してwaveファイルを作成
+    query = set_average_length(query)
+    query = query_operation(query, 1.0)
+    length_before = make_wavefile_from_query(query, wavefilename='algo02_before.wav')
+
+    # 長さ調整
+    ratio = calc_ratio(BPM, length_before, moras_count)
+    query = query_operation(query, ratio)
+
+    # waveファイルを作成
+    length_after = make_wavefile_from_query(query, wavefilename='algo02_after.wav')
+    expected_length = calc_expected_length(BPM, moras_count)
+    difference = length_after - expected_length
+    print(f'difference = {difference:.9f}, per mora = {(difference / moras_count):.9f}')
+
+    # 最後に余白をつける
+    query['prePhonemeLength'] = 0.5
+    query['postPhonemeLength'] = 0.5
+    length_after = make_wavefile_from_query(query, wavefilename='algo02_after02.wav')
+    WH.WaveHandler().show_wavefile_info('algo02_after02.wav')
+
     return query
 
 
@@ -93,11 +134,11 @@ if __name__ == "__main__":
 
     texts02 = ['じぇじぇじぇじぇ' * i for i in range(1, 10)]
 
-    texts = texts02 + texts01
+    texts = texts01[4:5]
 
     for text in texts:
-        print(f'text = {text}, length = {len(text)}')
-        trial_algo01(text)
+        # trial_algo01(text)
+        trial_algo02(text)
 
     
     
