@@ -56,6 +56,11 @@ class WaveHandler:
         print(f"フレーム数: {num_frames} フレーム")
         print(f"再生時間: {num_frames / frame_rate} 秒")
 
+    def show_wavefile_info(self, filename):
+        print(f"ファイル名: {filename}")
+        wavedata = self.read(filename)
+        self.show_wavedata_info(wavedata)
+
 if __name__ == "__main__":
     INPUT_WAVE_FILE = 'testdata/whtest00.wav'
     OUTPUT_WAVE_FILE = 'testdata/result.wav'
