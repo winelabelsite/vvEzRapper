@@ -120,6 +120,41 @@ def trial_algo02(text):
 
     return query
 
+def trial_algo03(text):
+    # print('お試し03 サンプルのMora長さを平均化してから長さ調整、ずれを補正しながら収束を目指す')
+
+    # サンプル作る
+    _, query = make_sample(text)
+    moras_count = APA.APMorasCounter().run(query)
+    print(f'algo02: text = {text}, moras_count = {moras_count}')
+    expected_length = calc_expected_length(BPM, moras_count)
+
+    # Moraの長さを平均化、これをもとにSpeedScaleを調整していく
+    query = set_average_length(query)
+    query = query_operation(query, 1.0)
+    length_before = make_wavefile_from_query(query, wavefilename='algo02_before.wav')
+
+    difference = 99999.9
+    ratio = calc_ratio(BPM, length_before, moras_count)
+    while abs(difference) > 0.001:
+        # 長さ調整
+        query = query_operation(query, ratio)
+
+        # waveファイルを作成
+        length_after = make_wavefile_from_query(query, wavefilename='algo02_after.wav')
+        difference = length_after - expected_length
+
+        # 次の比率を計算
+        ratio = ratio * expected_length / length_after
+        print(f'difference = {difference:.9f}, ratio = {ratio:.9f}')
+
+    # 最後に余白をつける
+    query['prePhonemeLength'] = 0.5
+    query['postPhonemeLength'] = 0.5
+    length_after = make_wavefile_from_query(query, wavefilename='algo02_after02.wav')
+    WH.WaveHandler().show_wavefile_info('algo02_after02.wav')
+
+    return query
 
 if __name__ == "__main__":
     texts01 = [
@@ -150,8 +185,8 @@ if __name__ == "__main__":
     texts = texts01[4:5]
 
     for text in texts:
-        trial_algo01(text)
-        trial_algo02(text)
-
+        # trial_algo01(text)
+        # trial_algo02(text)
+        trial_algo03(text)
     
     
