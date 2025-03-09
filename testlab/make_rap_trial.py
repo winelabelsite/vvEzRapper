@@ -59,6 +59,7 @@ def query_operation(query, ratio):
 def trial_algo03(text):
     # print('お試し03 サンプルのMora長さを平均化してから長さ調整、ずれを補正しながら収束を目指す')
     WAV_FILENAME = 'algo03_result.wav'
+    TRIAL_COUNT = 10
 
     # サンプル作る
     query = make_sample(text)
@@ -75,7 +76,7 @@ def trial_algo03(text):
     difference_min = 99999.9
     ratio = calc_ratio(BPM, length_before, moras_count)
     ratio_result = ratio
-    for _ in range(10):
+    for _ in range(TRIAL_COUNT):
         # 長さ調整
         query = query_operation(query, ratio)
 
