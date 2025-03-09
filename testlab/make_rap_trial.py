@@ -1,9 +1,7 @@
-import json
 import AccentPhraseApps as APA
 import wavhandler as WH
 import accessEngine as AE
 
-BPM = 120
 
 def calc_ratio(bpm, wave_length, moras_count):
     """bpmとwave_lengthから、1モーラあたりの秒数を計算し、それをbpmから求めた値と比較して、比率を求める"""
@@ -56,19 +54,23 @@ def query_operation(query, ratio):
     query['outputSamplingRate'] = 48000
     return query
 
+BPM = 120
+WAV_FILENAME = 'algo03_result.wav'
+TRIAL_COUNT = 5
+
 def trial_algo03(text):
     # print('お試し03 サンプルのMora長さを平均化してから長さ調整、ずれを補正しながら収束を目指す')
-    WAV_FILENAME = 'algo03_result.wav'
-    TRIAL_COUNT = 10
 
     # サンプル作る
     query = make_sample(text)
-    moras_count = APA.APMorasCounter().run(query)
-    expected_length = calc_expected_length(BPM, moras_count)
-    print(f'algo03: text = {text}, moras_count = {moras_count}, expected_length = {expected_length:.9f}')
+    query = make_rap(query)
 
+def make_rap(query):
     # Moraの長さを平均化、これをもとにSpeedScaleを調整していく
     ratio = 1.0
+    moras_count = APA.APMorasCounter().run(query)
+    expected_length = calc_expected_length(BPM, moras_count)
+    print(f'make_rap: moras_count = {moras_count}, expected_length = {expected_length:.9f}')
     query = set_average_length(query)
     query = query_operation(query, ratio)
     length_before = make_wavefile_from_query(query, wavefilename=WAV_FILENAME)
@@ -87,6 +89,9 @@ def trial_algo03(text):
         if difference_min > abs(difference):
             difference_min = abs(difference)
             ratio_result = ratio
+        elif difference_min == abs(difference):
+            if difference > 0:
+                ratio_result = ratio
 
         # 次の比率を計算
         ratio = ratio * expected_length / length_after
@@ -100,8 +105,8 @@ def trial_algo03(text):
     WH.WaveHandler().show_wavefile_info(WAV_FILENAME)
 
     # 最後に余白をつけてWaveファイル作成
-    query['prePhonemeLength'] = 0.5
-    query['postPhonemeLength'] = 0.5
+    query['prePhonemeLength'] = 0.0
+    query['postPhonemeLength'] = 0.0
     length_after = make_wavefile_from_query(query, wavefilename=WAV_FILENAME)
 
     return query

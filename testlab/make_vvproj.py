@@ -3,33 +3,18 @@ import json
 import re
 from deepdiff import DeepDiff
 
+import make_rap_trial as MRT
+
 def camel_to_snake(name: str) -> str:
-    """Convert CamelCase or camelCase to snake_case."""
-    if name.startswith('_'):
-        return '_' + camel_to_snake(name[1:])
-    name = re.sub(r'([a-z])([A-Z])', r'\1_\2', name)  # Handle camelCase
-    name = re.sub(r'([A-Z]+)([A-Z][a-z])', r'\1_\2', name)  # Handle CamelCase
+    """CamelCase を snake_case に変換"""
+    name = re.sub(r'([a-z])([A-Z])', r'\1_\2', name)  # 小文字+大文字の境目に `_` を追加
+    name = re.sub(r'([A-Z]+)([A-Z][a-z])', r'\1_\2', name)  # 連続大文字 + 小文字の境目に `_` を追加
+    name = re.sub(r'([a-zA-Z])([0-9])', r'\1_\2', name)  # アルファベット + 数字の間に `_` を追加
     return name.lower()
 
-def snake_to_pascal(name: str) -> str:
-    """Convert snake_case to camelCase."""
-    if name.startswith('_'):
-        parts = name[1:].split('_')
-        if parts[0].isdigit():
-            numeric_prefix = parts[0]
-            rest = [parts[1]] + [word.capitalize() for word in parts[2:]] if len(parts) > 1 else []
-            return '_' + numeric_prefix + ''.join(rest)
-        else:
-            converted = [word.capitalize() for word in parts]
-        return '_' + ''.join(converted)
-    return ''.join(word.capitalize() for word in name.split('_'))
-
 def snake_to_camel(name: str) -> str:
-    """Convert snake_case to PascallCase."""
-    pascal = snake_to_pascal(name)
-    print(pascal)
-    camel = pascal[0].lower() + pascal[1:]
-    return camel
+    """snake_case を camelCase に変換"""
+    return re.sub(r'_([a-zA-Z0-9])', lambda m: m.group(1).upper(), name)
 
 
 def convert_dict_keys(data, convert_func):
@@ -49,27 +34,40 @@ def extract_level(d, level):
         return {k: extract_level(v, level-1) for k, v in d.items()}
     return d
 
-with open(r'jugem_processed.json', 'r', encoding="utf-8") as f:
+with open(r'jugem.vvproj', 'r', encoding="utf-8") as f:
     jugem = json.load(f)
     jugem_org = copy.deepcopy(jugem)
 
 for ak in jugem['talk']['audioKeys']:
-    # print(ak)
     query = jugem['talk']['audioItems'][ak]['query']
-    # query書き替える
-    snake_query = convert_dict_keys(query, camel_to_snake)
-    # print(json.dumps(snake_query, indent=2))
-    # camel_query = convert_dict_keys(query, snake_to_camel)
-    # print(json.dumps(camel_query, indent=2))
+    text = jugem['talk']['audioItems'][ak]['text']
+    print(f'ak = {ak}, text = {text}')
+    if len(text) == 0:
+        continue
+    accent_phrases = {'accent_phrases' : query['accentPhrases']}
+    accent_phrases = convert_dict_keys(accent_phrases, camel_to_snake)
+    query.pop('accentPhrases')
+    query.update(accent_phrases)
+    # ここでqueryを書き換える
+    query = MRT.make_rap(query)
+
+    accent_phrases = {'accentPhrases' : query['accent_phrases']}
+    accent_phrases = convert_dict_keys(accent_phrases, snake_to_camel)
+    query.pop('accent_phrases')
+    query.update(accent_phrases)
     
-    jugem['talk']['audioItems'][ak]['query'] = snake_query
+    jugem['talk']['audioItems'][ak]['query'] = query
 
 # 深さ1までの要素を抽出
-level = 5
-dictorg_levelx = extract_level(jugem_org, level)
-dictnew_levelx = extract_level(jugem, level)
+# for level in range(10):
+#     print(f'level: {level}')
+#     dictorg_levelx = extract_level(jugem_org, level)
+#     dictnew_levelx = extract_level(jugem, level)
 
-diff = DeepDiff(dictorg_levelx, dictnew_levelx)
-print(json.dumps(diff, indent=2, ensure_ascii=False))
-# with open('diff.json', 'w', encoding='utf-8') as f:
-#     json.dump(diff, f, ensure_ascii=False)
+#     diff = DeepDiff(dictorg_levelx, dictnew_levelx)
+#     print(json.dumps(diff, indent=2, ensure_ascii=False))
+#     # if diff:
+#     #     break
+
+with open('new.vvproj', 'w', encoding='utf-8') as f:
+    json.dump(jugem, f, ensure_ascii=False)
