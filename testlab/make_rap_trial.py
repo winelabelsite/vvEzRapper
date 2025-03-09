@@ -116,43 +116,55 @@ def trial_algo02(text):
     query['prePhonemeLength'] = 0.5
     query['postPhonemeLength'] = 0.5
     length_after = make_wavefile_from_query(query, wavefilename='algo02_after02.wav')
-    WH.WaveHandler().show_wavefile_info('algo02_after02.wav')
+    # WH.WaveHandler().show_wavefile_info('algo02_after02.wav')
 
     return query
 
 def trial_algo03(text):
     # print('お試し03 サンプルのMora長さを平均化してから長さ調整、ずれを補正しながら収束を目指す')
-
+    WAV_FILENAME = 'algo03_result.wav'
     # サンプル作る
     _, query = make_sample(text)
     moras_count = APA.APMorasCounter().run(query)
-    print(f'algo02: text = {text}, moras_count = {moras_count}')
     expected_length = calc_expected_length(BPM, moras_count)
+    print(f'algo03: text = {text}, moras_count = {moras_count}, expected_length = {expected_length:.9f}')
 
     # Moraの長さを平均化、これをもとにSpeedScaleを調整していく
+    ratio = 1.0
     query = set_average_length(query)
-    query = query_operation(query, 1.0)
-    length_before = make_wavefile_from_query(query, wavefilename='algo02_before.wav')
+    query = query_operation(query, ratio)
+    length_before = make_wavefile_from_query(query, wavefilename=WAV_FILENAME)
 
-    difference = 99999.9
+    difference_min = 99999.9
     ratio = calc_ratio(BPM, length_before, moras_count)
-    while abs(difference) > 0.001:
+    ratio_result = ratio
+    for _ in range(10):
         # 長さ調整
         query = query_operation(query, ratio)
 
         # waveファイルを作成
-        length_after = make_wavefile_from_query(query, wavefilename='algo02_after.wav')
+        length_after = make_wavefile_from_query(query, wavefilename=WAV_FILENAME)
         difference = length_after - expected_length
+
+        if difference_min > abs(difference):
+            difference_min = abs(difference)
+            ratio_result = ratio
 
         # 次の比率を計算
         ratio = ratio * expected_length / length_after
-        print(f'difference = {difference:.9f}, ratio = {ratio:.9f}')
+        print(f'length = {length_after:.9f}, difference = {difference:.9f} per beat = {(difference / moras_count) * 4:.9f}, ratio = {ratio:.9f}')
 
-    # 最後に余白をつける
+    print(f'result : ratio_result = {ratio_result:.9f}, difference_min = {difference_min:.9f}, length_after = {length_after:.9f}')
+
+    # 一番差が小さかったものを選んでWaveファイル作って長さ確認。
+    query = query_operation(query, ratio_result)
+    length_after = make_wavefile_from_query(query, wavefilename=WAV_FILENAME)
+    WH.WaveHandler().show_wavefile_info(WAV_FILENAME)
+
+    # 最後に余白をつけてWaveファイル作成
     query['prePhonemeLength'] = 0.5
     query['postPhonemeLength'] = 0.5
-    length_after = make_wavefile_from_query(query, wavefilename='algo02_after02.wav')
-    WH.WaveHandler().show_wavefile_info('algo02_after02.wav')
+    length_after = make_wavefile_from_query(query, wavefilename=WAV_FILENAME)
 
     return query
 
@@ -182,7 +194,8 @@ if __name__ == "__main__":
     ちょうすけ
     """
 
-    texts = texts01[4:5]
+    texts = texts01[:]                   
+
 
     for text in texts:
         # trial_algo01(text)
