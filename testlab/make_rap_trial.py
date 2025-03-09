@@ -10,17 +10,15 @@ def calc_ratio(bpm, wave_length, moras_count):
     spb_given = 60 / bpm / 4
     spb_before = wave_length / moras_count
     ratio = spb_given / spb_before
-    # print(f'ratio = {ratio:.6f}')
     return ratio
 
 def calc_expected_length(bpm, moras_count):
     """bpmとモーラ数から、期待される音声の長さを計算する"""
     expected_length = 60 * moras_count / bpm / 4
-    # print(f'expected_length = {expected_length:.6f}')
     return expected_length
 
 def make_sample(text, is_kana=False, wavefilename=None):
-        """テキストから音声波形を生成し、その長さとクエリを返す"""
+        """テキストからクエリのサンプルを作成する"""
         ae = AE.AccessEngine()
         wh = WH.WaveHandler()
         query = ae.audio_query(text)
@@ -28,18 +26,12 @@ def make_sample(text, is_kana=False, wavefilename=None):
             accent_phrases = ae.accent_phrases(text, is_kana=is_kana)
             query['accentPhrases'] = accent_phrases
             query['kana'] = text
-        wave = ae.synthesis(query)
-        length = wh.get_length(wave)
-        if wavefilename is not None:
-            wh.write(wavefilename, wave)
-        # print(f'make_sample length = {length}')
-        return length, query 
+        return query 
 
 def set_average_length(query, wavefilename=None):
         """クエリの各モーラの長さを平均化し、そのクエリを返す"""
         ae = AE.AccessEngine()
         wh = WH.WaveHandler()
-        # APA.APDumper().run(query)
         average_length = APA.APLengthAverageCalcurator().run(query)
         query = APA.APMoraLengthAdjuster(average_length).run(query)
         wave = ae.synthesis(query)
@@ -55,7 +47,6 @@ def make_wavefile_from_query(query, wavefilename=None):
     length = wh.get_length(wave)
     if wavefilename is not None:
         wh.write(wavefilename, wave)
-    # print(f'make_wavefile_from_query length = {length}')
     return length
 
 def query_operation(query, ratio):
@@ -63,7 +54,6 @@ def query_operation(query, ratio):
     query['postPhonemeLength'] = 0.0
     query["speedScale"] = 1 / ratio
     query['outputSamplingRate'] = 48000
-    # APA.APDumper().run(query)
     return query
 
 
@@ -71,7 +61,7 @@ def trial_algo01(text):
     # print('お試し01 サンプル作って全体の長さ調整')
 
     # サンプル作る
-    _, query = make_sample(text)
+    query = make_sample(text)
     moras_count = APA.APMorasCounter().run(query)
     print(f'algo01: text = {text}, moras_count = {moras_count}')
 
@@ -94,7 +84,7 @@ def trial_algo02(text):
     # print('お試し02 サンプルのMora長さを平均化してから長さ調整')
 
     # サンプル作る
-    _, query = make_sample(text)
+    query = make_sample(text)
     moras_count = APA.APMorasCounter().run(query)
     print(f'algo02: text = {text}, moras_count = {moras_count}')
     # Moraの長さを平均化してwaveファイルを作成
@@ -123,8 +113,9 @@ def trial_algo02(text):
 def trial_algo03(text):
     # print('お試し03 サンプルのMora長さを平均化してから長さ調整、ずれを補正しながら収束を目指す')
     WAV_FILENAME = 'algo03_result.wav'
+
     # サンプル作る
-    _, query = make_sample(text)
+    query = make_sample(text)
     moras_count = APA.APMorasCounter().run(query)
     expected_length = calc_expected_length(BPM, moras_count)
     print(f'algo03: text = {text}, moras_count = {moras_count}, expected_length = {expected_length:.9f}')
