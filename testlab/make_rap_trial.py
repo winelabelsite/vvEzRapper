@@ -32,6 +32,9 @@ def set_average_length(query, wavefilename=None):
         wh = WH.WaveHandler()
         average_length = APA.APLengthAverageCalcurator().run(query)
         query = APA.APMoraLengthAdjuster(average_length).run(query)
+        with open('query.json', 'w', encoding='utf-8') as f:
+            import json
+            json.dump(query, f, ensure_ascii=False)
         wave = ae.synthesis(query)
         if wavefilename is not None:
             wh.write(wavefilename, wave)
@@ -41,6 +44,7 @@ def make_wavefile_from_query(query, wavefilename=None):
     """クエリから音声波形を生成し、その長さを返す"""
     ae = AE.AccessEngine()
     wh = WH.WaveHandler()
+
     wave = ae.synthesis(query)
     length = wh.get_length(wave)
     if wavefilename is not None:

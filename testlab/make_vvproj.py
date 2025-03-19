@@ -44,6 +44,8 @@ for ak in jugem['talk']['audioKeys']:
     print(f'ak = {ak}, text = {text}')
     if len(text) == 0:
         continue
+    if ak != '4b5e4cc3-c890-4567-b3e8-b35d593c5a14':
+        continue
     accent_phrases = {'accent_phrases' : query['accentPhrases']}
     accent_phrases = convert_dict_keys(accent_phrases, camel_to_snake)
     query.pop('accentPhrases')
